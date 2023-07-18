@@ -1,0 +1,175 @@
+= Quickstart
+:idprefix:
+:idseparator: -
+:sectlinks:
+:sectnums:
+:toc: auto
+
+:uri-repo: https://github.com/oracle-terraform-modules/terraform-oci-oke
+:uri-rel-file-base: link:{uri-repo}/blob/main
+:uri-rel-tree-base: link:{uri-repo}/tree/main
+:uri-docs: {uri-rel-file-base}/docs
+:uri-instructions: {uri-docs}/instructions.adoc
+:uri-oci-keys: https://docs.cloud.oracle.com/iaas/Content/API/Concepts/apisigningkey.htm
+:uri-oci-ocids: https://docs.cloud.oracle.com/iaas/Content/API/Concepts/apisigningkey.htm#five
+:uri-oci-okepolicy: https://docs.cloud.oracle.com/iaas/Content/ContEng/Concepts/contengpolicyconfig.htm#PolicyPrerequisitesService
+:uri-oci-provider: https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/terraformproviderconfiguration.htm
+:uri-oci-provider-precedence: https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/terraformproviderconfiguration.htm#terraformproviderconfiguration_topic-Order_of_Precedence
+:uri-provider-example: {uri-rel-file-base}/provider.tf.example
+:uri-terraform: https://www.terraform.io
+:uri-terraform-oci: https://www.terraform.io/docs/providers/oci/index.html
+:uri-terraform-options: {uri-docs}/terraformoptions.adoc
+:uri-terraform-precedence: https://www.terraform.io/docs/language/values/variables.html#variable-definition-precedence
+:uri-variables: {uri-rel-file-base}/variables.tf
+
+== Assumptions
+
+1. You have setup the {uri-oci-keys}[required keys]
+2. You know the {uri-oci-ocids}[required OCIDs]
+3. You have set the {uri-oci-okepolicy}[necessary OKE policy]
+
+== Prerequisites
+
+1. git is installed
+2. ssh client is installed
+3. Terraform 1.0.0+ is installed
+
+== Provision using this git repo
+
+. Clone the repo:
+
++
+[source,bash]
+----
+git clone https://github.com/oracle-terraform-modules/terraform-oci-oke.git tfoke
+
+cd tfoke
+cp terraform.tfvars.example terraform.tfvars
+----
+
+=== Creating Providers
+
+You need to create 2 providers:
+.. 1 provider for the region where your OKE cluster and other resources will be created
+.. 1 provider for the home region. This is required for conducting identity operations. *Note that your home region may not necessarily be the same as your current region.*
+
+. Create a provider.tf file in root with 2 providers. An {uri-provider-example}[example] is provided for convenience:
++
+[source,bash]
+----
+cp provider.tf.example provider.tf
+----
+
+. You can also create use providers ({uri-oci-provider}[using differerent methods]) such as:
+
+.. config file profile
+.. auth token
+.. instance principal
+
+
+. Set mandatory parameters in the provider depending on your {uri-oci-provider}[method of initializing your provider]:
+
+* api_fingerprint
+* api_private_key_path
+* compartment_id
+* tenancy_id
+* user_id
+* regions
+
+You can set those parameters using: 
+
+1. environment variables (e.g. TF_api_fingerprint)
+2. the terraform.tfvars
+
+Please ensure you understand the {uri-terraform-precedence}[Terraform variable definition order of precedence] and {uri-oci-provider-precedence}[that of OCI].
+
+. Run Terraform:
+
++
+[source,bash]
+----
+terraform init
+terraform plan
+terraform apply
+----
+
+== Provision using the HashiCorp registry module
+
+. In your project root, create a provider.tf file and repeat the steps for creating providers as above.
+
+. In your project root, create a variables.tf file and add variables for your project. You can copy the existing {uri-variables}[variables.tf] in the OKE module root.
+
+. In your project root, create a versions.tf file and add the following:
+
++
+----
+terraform {
+  required_providers {
+    oci = {
+      source                = "oracle/oci"
+      configuration_aliases = [oci.home]
+      version               = ">= 4.67.3"
+    }
+  }
+  required_version = ">= 1.0.0"
+}
+----
+
+. In your project root, create a main.tf file and add the following:
+
++
+----
+module "oke" {
+  source  = "oracle-terraform-modules/oke/oci"
+  version = "4.2.4"
+  # insert required variables here
+}
+----
+
+. Edit your OKE module definition and pass the required variables:
+
++
+----
+module "oke" {
+  source                                =   "oracle-terraform-modules/oke/oci"
+  version                               =   "4.0.0"
+
+  compartment_id                        =   var.compartment_id
+  tenancy_id                            =   var.tenancy_id
+
+  ssh_private_key_path                  =   var.ssh_private_key_path
+  ssh_public_key_path                   =   var.ssh_public_key_path
+
+  label_prefix                          =   var.label_prefix
+  home_region                           =   var.home_region
+  region                                =   var.region
+
+  vcn_name                              =   var.vcn_name
+
+  create_bastion_host                   =   var.create_bastion_host
+ 
+  create_operator                       =   var.create_operator
+
+  # add additional parameters for availability_domains, oke etc as you need
+
+  providers = {
+    oci.home = oci.home
+  }
+}
+----
+
+. Run Terraform:
+
++
+[source,bash]
+----
+terraform init
+terraform plan
+terraform apply
+----
+
+== Related documentation
+
+* {uri-instructions}[Detailed Instructions]
+
+* {uri-terraform-options}[All Terraform configuration options] for {uri-repo}[this project]
